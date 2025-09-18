@@ -14,6 +14,9 @@ app.use(cors())
 
 app.use('/form', formRoute);
 app.use('/submission', submissionRoute);
+app.route('/',(req,res) => {
+    res.send({'mess': 'running'});
+})
 
 const PORT = process.env.PORT;
 
