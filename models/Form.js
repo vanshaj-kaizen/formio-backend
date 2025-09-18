@@ -1,5 +1,20 @@
 const db = require('../db');
 
+function mapFormioTypeToMySQL(type) {
+      switch (type) {
+        case "number": return "INT";
+        case "checkbox": return "TINYINT(1)";
+        case "date": return "DATE";
+        case "datetime": return "DATETIME";
+        case "email": return "VARCHAR(255)";
+        case "phoneNumber": return "VARCHAR(20)";
+        case "textfield":
+        case "textarea": return "TEXT";
+        case "select": return "TEXT"; 
+        default: return "TEXT"; 
+      }
+    }
+
 const Form = {
   create: async ({ name, schema, country, brand }) => {
     const [result] = await db.query(
@@ -10,22 +25,9 @@ const Form = {
     const formId = result.insertId;
     const tableName = `form_${formId}_submissions`;
 
-    function mapFormioTypeToMySQL(type) {
-      switch (type) {
-        case "number": return "INT";
-        case "checkbox": return "TINYINT(1)";
-        case "date": return "DATE";
-        case "datetime": return "DATETIME";
-        case "email": return "VARCHAR(255)";
-        case "phoneNumber": return "VARCHAR(20)";
-        case "textfield":
-        case "textarea": return "TEXT";
-        case "select": return "TEXT"; // store JSON or CSV
-        default: return "TEXT"; // fallback
-      }
-    }
+    
 
-    const columns = schema.components.map((c) => {
+    const columns = schema.components.filter(c => c.type !== "button").map((c) => {
       switch (c.type) {
         case "number": return `\`${c.key}\` INT`;
         case "email":
@@ -42,6 +44,8 @@ const Form = {
     )
   `;
     console.log(createTableSQL);
+    await db.query(createTableSQL);
+
 
     return result.insertId;
   },
@@ -58,6 +62,26 @@ const Form = {
 
   editById: async ({ id, schema, name, country, brand }) => {
     const [result] = await db.query('UPDATE form_schema SET form_schema = ?, name =?,country=?,brand=? Where id=?', [JSON.stringify(schema), name, country, brand, id]);
+
+    const tableName = `form_${id}_submissions`;
+    const [rows] = await db.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+      [tableName]
+    );
+
+    const existingColumns = rows.map(r => r.COLUMN_NAME);
+    for (const comp of schema.components) {
+      if(comp.type=="button") continue;
+      const columnName = comp.key;
+      if (!existingColumns.includes(columnName)) {
+        
+        let columnType = mapFormioTypeToMySQL(comp.type);
+        
+
+        await db.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnType}`);
+      }
+    }
     return result;
   },
 
@@ -67,12 +91,12 @@ const Form = {
     if (result.affectedRows > 0) {
 
       console.log("Row deleted successfully");
-      return true;  // ✅ success
+      return true;  
 
     } else {
 
       console.log("No row found with given id");
-      return false; // ❌ nothing deleted
+      return false; 
 
     }
   }
