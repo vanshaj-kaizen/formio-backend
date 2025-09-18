@@ -12,8 +12,8 @@ dotenv.config();
 
 app.use(cors())
 
-app.use('/form',formRoute);
-app.use('/submission',submissionRoute);
+app.use('/form', formRoute);
+app.use('/submission', submissionRoute);
 
 const PORT = process.env.PORT;
 
