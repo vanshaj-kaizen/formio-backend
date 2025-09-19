@@ -16,15 +16,14 @@ route.post('/create', async (req, res) => {
 
 route.get('/all', async (req, res) => {
 
-    // try {
-    //     const data = await Form.findAll();
-    //     res.send(data);
-    // }
-    // catch (e) {
-    //     res.status(500)
-    //     console.log(e)
-    // }
-    res.send({'dsa':'asd'});
+    try {
+        const data = await Form.findAll();
+        res.send(data);
+    }
+    catch (e) {
+        res.status(500)
+        console.log(e)
+    }
 })
 route.get('/:id', async (req, res) => {
     try {
