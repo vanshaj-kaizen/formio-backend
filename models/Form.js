@@ -1,19 +1,37 @@
 const db = require('../db');
 
 function mapFormioTypeToMySQL(type) {
-      switch (type) {
-        case "number": return "INT";
-        case "checkbox": return "TINYINT(1)";
-        case "date": return "DATE";
-        case "datetime": return "DATETIME";
-        case "email": return "VARCHAR(255)";
-        case "phoneNumber": return "VARCHAR(20)";
-        case "textfield":
-        case "textarea": return "TEXT";
-        case "select": return "TEXT"; 
-        default: return "TEXT"; 
-      }
+  switch (type) {
+    case "number": return "INT";
+    case "checkbox": return "TINYINT(1)";
+    case "date": return "DATE";
+    case "datetime": return "DATETIME";
+    case "email": return "VARCHAR(255)";
+    case "phoneNumber": return "VARCHAR(20)";
+    case "textfield":
+    case "textarea": return "TEXT";
+    case "select": return "TEXT";
+    default: return "TEXT";
+  }
+}
+
+function flattenComponents(components) {
+  let flat = [];
+  components.forEach(c => {
+    if (c.type === "columns") {
+      // Each column has its own components array
+      c.columns.forEach(col => {
+        flat = flat.concat(flattenComponents(col.components));
+      });
+    } else if (c.type === "panel" || c.type === "fieldset" || c.type === "datagrid") {
+      // Handle other container types if needed
+      flat = flat.concat(flattenComponents(c.components));
+    } else {
+      flat.push(c);
     }
+  });
+  return flat;
+}
 
 const Form = {
   create: async ({ name, schema, country, brand }) => {
@@ -25,9 +43,9 @@ const Form = {
     const formId = result.insertId;
     const tableName = `form_${formId}_submissions`;
 
-    
+    const allComponents = flattenComponents(schema.components);
 
-    const columns = schema.components.filter(c => c.type !== "button").map((c) => {
+    const columns = allComponents.filter(c => c.type !== "button").map((c) => {
       switch (c.type) {
         case "number": return `\`${c.key}\` INT`;
         case "email":
@@ -69,15 +87,16 @@ const Form = {
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
       [tableName]
     );
+    const allComponents = flattenComponents(schema.components);
 
     const existingColumns = rows.map(r => r.COLUMN_NAME);
-    for (const comp of schema.components) {
-      if(comp.type=="button") continue;
+    for (const comp of allComponents) {
+      if (comp.type == "button") continue;
       const columnName = comp.key;
       if (!existingColumns.includes(columnName)) {
-        
+
         let columnType = mapFormioTypeToMySQL(comp.type);
-        
+
 
         await db.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnType}`);
       }
@@ -91,12 +110,12 @@ const Form = {
     if (result.affectedRows > 0) {
 
       console.log("Row deleted successfully");
-      return true;  
+      return true;
 
     } else {
 
       console.log("No row found with given id");
-      return false; 
+      return false;
 
     }
   }
