@@ -3,7 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const formRoute = require('./routes/form.js');
 const submissionRoute = require('./routes/submission.js')
-
+const submissionRouteForm = require('./routes/submitformdata.js')
 const app = express();
 
 app.use(express.json());
@@ -14,7 +14,7 @@ app.use(cors())
 
 app.use('/form', formRoute);
 app.use('/submission', submissionRoute);
-
+app.use('/submitformdata',submissionRouteForm);
 
 const PORT = process.env.PORT;
 
